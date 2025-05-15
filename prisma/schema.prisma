@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  parent
+  secretaire
+  analyste
+  admin
+}
+
+enum StatutDossier {
+  Nouveau
+  EnCours
+  Incomplet
+  Accepte
+  Rejete
+  Cloture
+}
+
+model Utilisateur {
+  id           String        @id @default(uuid())
+  nom          String
+  email        String        @unique
+  motDePasse   String
+  role         Role
+  enfants      Enfant[]      @relation("CreateurEnfant")
+  commentaires Commentaire[] @relation("AuteurCommentaire")
+  createdAt    DateTime      @default(now())
+  resetToken       String?  // <-- champ pour token de reset
+  resetTokenExpiry DateTime? // <-- expiration du token
+}
+
+model Enfant {
+  id                     String        @id @default(uuid())
+  nom                    String
+  dateNaissance          DateTime
+  sexe                   String
+  commune                String
+
+  parentNom              String
+  parentTelephone        String
+  parentEmail            String
+
+  statutDossier          StatutDossier @default(Nouveau)
+  diagnostic             String?
+  dateCreation           DateTime      @default(now())
+
+  utilisateurCreateurId  String
+  utilisateurCreateur    Utilisateur   @relation("CreateurEnfant", fields: [utilisateurCreateurId], references: [id])
+
+  documents              Document[]
+  observations           Commentaire[]
+}
+
+model Document {
+  id                 String   @id @default(uuid())
+  url                String
+  nomFichierOriginal String
+  enfant             Enfant   @relation(fields: [enfantId], references: [id])
+  enfantId           String
+  uploadedAt         DateTime @default(now())
+}
+
+model Commentaire {
+  id        String     @id @default(uuid())
+  contenu   String
+  auteur    Utilisateur @relation("AuteurCommentaire", fields: [auteurId], references: [id])
+  auteurId  String
+  enfant    Enfant     @relation(fields: [enfantId], references: [id])
+  enfantId  String
+  creeLe    DateTime   @default(now())
+}
